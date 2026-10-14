@@ -41,5 +41,29 @@ public class OutboxServiceImpl implements OutboxService {
                     exception
             );
         }
+
+    }
+
+    public OutboxEvent savingOutboxEvent(Object event,String eventType,Long employeeId) {
+        try {
+            String payload = objectMapper.writeValueAsString(event);
+
+            OutboxEvent outboxEvent = new OutboxEvent(
+
+                    eventType,
+                    employeeId,
+                    payload,
+                    LocalDateTime.now()
+
+            );
+            outboxEventRepository.save(outboxEvent);
+            return outboxEvent;
+        } catch (JsonProcessingException exception) {
+
+            throw new IllegalStateException(
+                    "Failed to serialize employee onboarding event",
+                    exception
+            );
+        }
     }
 }

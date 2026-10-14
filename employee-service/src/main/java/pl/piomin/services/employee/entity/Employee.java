@@ -15,11 +15,18 @@ public class Employee {
 
     private Long departmentId;
 
+    public void setDepartmentId(Long departmentId) {
+        this.departmentId = departmentId;
+    }
+
     private String name;
 
     private Integer age;
 
     private String position;
+
+    private Long pendingTargetDepartmentId;
+    private String pendingTransferReason;
 
     @Enumerated(EnumType.STRING)
     private OnboardingStatus onboardingStatus;
@@ -33,14 +40,33 @@ public class Employee {
             String name,
             Integer age,
             String position,
-            OnboardingStatus onboardingStatus) {
-
+            OnboardingStatus onboardingStatus
+    ) {
         this.organizationId = organizationId;
         this.departmentId = departmentId;
         this.name = name;
         this.age = age;
         this.position = position;
         this.onboardingStatus = onboardingStatus;
+    }
+
+    public Employee(
+            Long organizationId,
+            Long departmentId,
+            String name,
+            Integer age,
+            String position,
+            OnboardingStatus onboardingStatus,
+            Long pendingTargetDepartmentId,
+            String pendingTransferReason) {
+        this.organizationId = organizationId;
+        this.departmentId = departmentId;
+        this.name = name;
+        this.age = age;
+        this.position = position;
+        this.onboardingStatus = onboardingStatus;
+        this.pendingTargetDepartmentId = pendingTargetDepartmentId;
+        this.pendingTransferReason = pendingTransferReason;
     }
 
     public Long getId() {
@@ -73,5 +99,21 @@ public class Employee {
 
     public void setOnboardingStatus(OnboardingStatus onboardingStatus) {
         this.onboardingStatus = onboardingStatus;
+    }
+
+    public Long getPendingTargetDepartmentId() {
+        return pendingTargetDepartmentId;
+    }
+
+    public void setPendingTargetDepartmentId(Long pendingTargetDepartmentId) {
+        this.pendingTargetDepartmentId = pendingTargetDepartmentId;
+    }
+
+    public String getPendingTransferReason() {
+        return pendingTransferReason;
+    }
+
+    public void setPendingTransferReason(String pendingTransferReason) {
+        this.pendingTransferReason = pendingTransferReason;
     }
 }

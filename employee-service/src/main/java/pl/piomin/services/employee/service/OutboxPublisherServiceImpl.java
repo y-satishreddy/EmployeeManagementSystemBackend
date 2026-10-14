@@ -1,113 +1,118 @@
 package pl.piomin.services.employee.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import pl.piomin.services.employee.entity.OutboxEvent;
-import pl.piomin.services.employee.event.EmployeeOnboardEvent;
-import pl.piomin.services.employee.repository.OutboxEventRepository;
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.Optional;
 
 @Service
+@Slf4j
 public class OutboxPublisherServiceImpl implements OutboxPublisherService {
 
-    private static final Logger logger =
-            LoggerFactory.getLogger(OutboxPublisherServiceImpl.class);
-
-    private final KafkaTemplate<String, EmployeeOnboardEvent> kafkaTemplate;
-    private final ObjectMapper objectMapper;
+    private final KafkaTemplate<String, String> kafkaTemplate;
     private final OutboxLockService outboxLockService;
-    private final OutboxEventRepository outboxEventRepository;
 
     public OutboxPublisherServiceImpl(
-            KafkaTemplate<String, EmployeeOnboardEvent> kafkaTemplate,
-            ObjectMapper objectMapper,
             OutboxLockService outboxLockService,
-            OutboxEventRepository outboxEventRepository) {
+            KafkaTemplate<String, String> kafkaTemplate) {
 
         this.kafkaTemplate = kafkaTemplate;
-        this.objectMapper = objectMapper;
         this.outboxLockService = outboxLockService;
-        this.outboxEventRepository = outboxEventRepository;
     }
 
+    @Override
+    public void publish(OutboxEvent outboxEvent) {
 
-    public void publish(Long outboxEventId) {
+        Long eventId = outboxEvent.getId();
 
         Optional<OutboxEvent> optionalEvent =
-                outboxLockService.claimEvent(outboxEventId);
+                outboxLockService.claimEvent(eventId);
 
         if (optionalEvent.isEmpty()) {
-
-            logger.info(
-                    "OutboxEvent {} is already being processed or no longer exists",
-                    outboxEventId
-            );
-
+            log.info("Event {} could not be claimed", eventId);
             return;
         }
 
-        OutboxEvent outboxEvent = optionalEvent.get();
+        OutboxEvent claimedEvent = optionalEvent.get();
 
         try {
+            String topic = getTopic(claimedEvent.getEventType());
+            String key = String.valueOf(claimedEvent.getAggregateId());
+            String payload = claimedEvent.getPayload();
 
-            EmployeeOnboardEvent employeeOnboardEvent =
-                    objectMapper.readValue(
-                            outboxEvent.getPayload(),
-                            EmployeeOnboardEvent.class
-                    );
-
-            logger.info(
-                    "Publishing OutboxEvent {} to Kafka",
-                    outboxEvent.getId()
+            log.info(
+                    "Publishing event. eventId={}, eventType={}, topic={}",
+                    claimedEvent.getId(),
+                    claimedEvent.getEventType(),
+                    topic
             );
 
-            kafkaTemplate.send(
-                    "employee-onboarded",
-                    String.valueOf(outboxEvent.getAggregateId()),
-                    employeeOnboardEvent
-            ).whenComplete((result, exception) -> {
+            kafkaTemplate.send(topic, key, payload)
+                    .whenComplete((result, exception) -> {
 
-                if (exception == null) {
+                        if (exception == null) {
+                            log.info(
+                                    "Event published successfully. eventId={}, topic={}",
+                                    claimedEvent.getId(),
+                                    topic
+                            );
 
-                    logger.info(
-                            "OutboxEvent {} successfully published to Kafka",
-                            outboxEvent.getId()
-                    );
+                            try {
+                                outboxLockService.deleteEvent(
+                                        claimedEvent.getId()
+                                );
+                            } catch (Exception deletionException) {
+                                log.error(
+                                        "Failed to delete published outbox event {}. " +
+                                                "It may be published again during retry.",
+                                        claimedEvent.getId(),
+                                        deletionException
+                                );
+                            }
 
-                    outboxEventRepository.deleteById(
-                            outboxEvent.getId()
-                    );
+                        } else {
+                            log.error(
+                                    "Failed to publish event. eventId={}, topic={}",
+                                    claimedEvent.getId(),
+                                    topic,
+                                    exception
+                            );
 
-                } else {
+                            releaseEventSafely(claimedEvent.getId());
+                        }
+                    });
 
-                    logger.error(
-                            "Failed to publish OutboxEvent {}. " +
-                                    "It will remain in the database for retry.",
-                            outboxEvent.getId(),
-                            exception
-                    );
-
-                    outboxLockService.releaseEvent(
-                            outboxEvent.getId()
-                    );
-                }
-            });
-
-        } catch (JacksonException e) {
-
-            logger.error(
-                    "Failed to deserialize OutboxEvent {}",
-                    outboxEvent.getId(),
-                    e
+        } catch (Exception exception) {
+            log.error(
+                    "Could not initiate publishing for event {}",
+                    claimedEvent.getId(),
+                    exception
             );
 
-            outboxLockService.releaseEvent(
-                    outboxEvent.getId()
+            releaseEventSafely(claimedEvent.getId());
+        }
+    }
+
+    private String getTopic(String eventType) {
+        return switch (eventType) {
+            case "EMPLOYEE_ONBOARDED" -> "employee-onboarded";
+            case "EMPLOYEE_TRANSFERRED" -> "employee-transferred";
+            default -> throw new IllegalArgumentException(
+                    "Unsupported event type: " + eventType
+            );
+        };
+    }
+
+    private void releaseEventSafely(Long eventId) {
+        try {
+            outboxLockService.releaseEvent(eventId);
+        } catch (Exception exception) {
+            log.error(
+                    "Failed to release outbox event {} for retry",
+                    eventId,
+                    exception
             );
         }
     }

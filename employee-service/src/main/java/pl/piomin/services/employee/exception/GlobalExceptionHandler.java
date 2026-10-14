@@ -28,12 +28,47 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DepartmentNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleDepartmentNotFoundException(DepartmentNotFoundException exception) {
-        ErrorResponse error=new ErrorResponse(
+        ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
                 exception.getMessage(),
                 null
         );
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(EmployeeNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEmployeeNotFoundException(EmployeeNotFoundException exception) {
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.NOT_FOUND.value(),
+                exception.getMessage(),
+                null
+        );
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(InvalidEmployeeStateException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidEmployeeStateException(InvalidEmployeeStateException exe) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                exe.getMessage(),
+                null
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(SameDepartmentException.class)
+    public ResponseEntity<ErrorResponse> handleSameDepartmentException(SameDepartmentException exe) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                exe.getMessage(),
+                null
+        );
+
+        return new ResponseEntity<>(errorResponse, HttpStatus.CONFLICT);
     }
 }

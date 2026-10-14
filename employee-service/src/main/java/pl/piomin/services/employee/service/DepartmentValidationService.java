@@ -55,10 +55,6 @@ public class DepartmentValidationService {
             Long departmentId,
             Throwable throwable) {
 
-        /*
-         * Department does not exist.
-         * This is a business exception, not a service failure.
-         */
         if (throwable instanceof DepartmentNotFoundException) {
 
             log.warn(
@@ -68,11 +64,6 @@ public class DepartmentValidationService {
 
             throw (DepartmentNotFoundException) throwable;
         }
-
-        /*
-         * Any other exception means the Department Service
-         * is unavailable or failed technically.
-         */
         log.error(
                 "Department service failed for departmentId={}",
                 departmentId,
