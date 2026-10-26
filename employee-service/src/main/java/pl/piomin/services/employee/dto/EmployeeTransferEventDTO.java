@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 @Data
 @AllArgsConstructor
 public class EmployeeTransferEventDTO {
-
+    private String eventId;
     private Long employeeId;
     private Long fromDepartmentId;
     private Long toDepartmentId;

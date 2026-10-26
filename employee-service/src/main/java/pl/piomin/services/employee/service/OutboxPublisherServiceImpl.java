@@ -43,10 +43,11 @@ public class OutboxPublisherServiceImpl implements OutboxPublisherService {
             String payload = claimedEvent.getPayload();
 
             log.info(
-                    "Publishing event. eventId={}, eventType={}, topic={}",
+                    "Publishing event. eventId={}, eventType={}, topic={}, payload={}",
                     claimedEvent.getId(),
                     claimedEvent.getEventType(),
-                    topic
+                    topic,
+                    payload
             );
 
             kafkaTemplate.send(topic, key, payload)

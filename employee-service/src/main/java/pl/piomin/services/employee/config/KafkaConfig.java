@@ -10,8 +10,6 @@ import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
-import org.springframework.kafka.support.serializer.JacksonJsonSerializer;
-import pl.piomin.services.employee.event.EmployeeOnboardEvent;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -23,7 +21,7 @@ public class KafkaConfig {
     private String bootstrapServers;
 
     @Bean
-    public ProducerFactory<String, EmployeeOnboardEvent> producerFactory() {
+    public ProducerFactory<String, String> producerFactory() {
 
         Map<String, Object> config = new HashMap<>();
 
@@ -39,24 +37,32 @@ public class KafkaConfig {
 
         config.put(
                 ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG,
-                JacksonJsonSerializer.class
+                StringSerializer.class
         );
 
         return new DefaultKafkaProducerFactory<>(config);
     }
 
     @Bean
-    public KafkaTemplate<String, EmployeeOnboardEvent> kafkaTemplate(
-            ProducerFactory<String, EmployeeOnboardEvent> producerFactory) {
+    public KafkaTemplate<String, String> kafkaTemplate(
+            ProducerFactory<String, String> producerFactory) {
 
         return new KafkaTemplate<>(producerFactory);
     }
 
     @Bean
     public NewTopic employeeOnboardedTopic() {
-
         return TopicBuilder
                 .name("employee-onboarded")
+                .partitions(1)
+                .replicas(1)
+                .build();
+    }
+
+    @Bean
+    public NewTopic employeeTransferredTopic() {
+        return TopicBuilder
+                .name("employee-transferred")
                 .partitions(1)
                 .replicas(1)
                 .build();

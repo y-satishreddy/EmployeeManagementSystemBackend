@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import pl.piomin.services.employee.entity.OutboxEvent;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface OutboxEventRepository
@@ -21,4 +22,6 @@ public interface OutboxEventRepository
     Optional<OutboxEvent> findByIdForUpdate(
             @Param("id") Long id
     );
+
+    List<OutboxEvent> findByProcessingFalse();
 }

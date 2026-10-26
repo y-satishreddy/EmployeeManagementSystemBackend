@@ -7,7 +7,6 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pl.piomin.services.employee.dto.DepartmentResponseDTO;
-import pl.piomin.services.employee.dto.EmployeeTransferEventDTO;
 import pl.piomin.services.employee.dto.EmployeeTransferRequestDTO;
 import pl.piomin.services.employee.dto.OnboardEmployeeRequestDTO;
 import pl.piomin.services.employee.entity.Employee;
@@ -19,7 +18,6 @@ import pl.piomin.services.employee.repository.EmployeeRepository;
 import pl.piomin.services.employee.repository.OutboxEventRepository;
 import tools.jackson.databind.ObjectMapper;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import static pl.piomin.services.employee.enums.OnboardingStatus.*;
@@ -37,6 +35,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final OutboxEventRepository outboxEventRepository;
     private ObjectMapper objectMapper;
     private EmployeeTransferCompletionService employeeTransferCompletionService;
+
     public EmployeeServiceImpl(EmployeeTransferCompletionService employeeTransferCompletionService, DepartmentValidationService departmentValidationService, EmployeeOnboardingCompletionService onboardingCompletionService, EmployeeRepository employeeRepository, EmployeeMapper employeeMapper, OutboxEventRepository outboxEventRepository, ObjectMapper objectMapper) {
 
         this.departmentValidationService = departmentValidationService;
@@ -131,17 +130,19 @@ public class EmployeeServiceImpl implements EmployeeService {
         Employee targetEmployee = employeeRepository.findById(employeeId).orElseThrow(() -> {
             throw new EmployeeNotFoundException("Employee Not Found with Id: " + employeeId);
         });
+        log.info("Employee found in the DB with id: {}", employeeId);
         if (targetEmployee.getOnboardingStatus() != OnboardingStatus.ACTIVE) {
             throw new InvalidEmployeeStateException("Employee with ID " + employeeId + " cannot be transferred because their current onboarding status is not ACTIVE.");
         }
+        log.info("Employee is ACTIVE");
         if (targetEmployee.getDepartmentId() == employeeTransferRequestDTO.getTargetDepartmentId()) {
             throw new SameDepartmentException("The Employee current department id:" + employeeId + " and employee department id:" + employeeTransferRequestDTO.getTargetDepartmentId() + " are same");
         }
-
+        log.info("Employee Current department id:{} and target department id: {}", targetEmployee.getDepartmentId(), employeeTransferRequestDTO.getTargetDepartmentId());
         try {
             DepartmentResponseDTO departmentResponse = departmentValidationService.departmentResponseDTO(employeeTransferRequestDTO.getTargetDepartmentId());
             logger.info("Department validation successful: {}", departmentResponse);
-            OutboxEvent outboxEvent= employeeTransferCompletionService.completeTransfer(targetEmployee, employeeTransferRequestDTO.getReason());
+            OutboxEvent outboxEvent = employeeTransferCompletionService.completeTransfer(targetEmployee, employeeTransferRequestDTO);
 
         } catch (DepartmentServiceNotAvailableException e) {
             logger.warn("Department service unavailable. Transfer marked as pending for employeeId={}", employeeId);
@@ -151,7 +152,6 @@ public class EmployeeServiceImpl implements EmployeeService {
             employeeRepository.save(targetEmployee);
             return targetEmployee;
         }
-
 
         return targetEmployee;
     }
@@ -170,7 +170,10 @@ public class EmployeeServiceImpl implements EmployeeService {
 
             try {
                 DepartmentResponseDTO departmentResponse = departmentValidationService.departmentResponseDTO(targetDepartmentId);
-                employeeTransferCompletionService.completeTransfer(employee,reason);
+                EmployeeTransferRequestDTO employeeTransferRequestDTO = new EmployeeTransferRequestDTO(
+                        targetDepartmentId, reason
+                );
+                employeeTransferCompletionService.completeTransfer(employee, employeeTransferRequestDTO);
                 log.info("Employee department updated successfully");
             } catch (DepartmentServiceNotAvailableException exception) {
                 log.warn(

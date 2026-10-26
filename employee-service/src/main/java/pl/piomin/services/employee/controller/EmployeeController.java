@@ -30,12 +30,6 @@ public class EmployeeController {
             @PathVariable Long employeeId,
             @Valid @RequestBody EmployeeTransferRequestDTO employeeTransferRequestDTO) {
 
-        log.info(
-                "Employee transfer request received for employeeId: {} and targetDepartmentId: {}",
-                employeeId,
-                employeeTransferRequestDTO.getTargetDepartmentId()
-        );
-
         Employee employee = employeeService.transferEmployeeToTargetDepartment(
                 employeeId,
                 employeeTransferRequestDTO
