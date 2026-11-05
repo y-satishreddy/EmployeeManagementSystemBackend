@@ -30,7 +30,7 @@ public class OutboxRetryService {
     public void retryPendingEvents() {
 
         List<OutboxEvent> events =
-                outboxEventRepository.findAll();
+                outboxEventRepository.findByProcessingFalse();
 
         for (OutboxEvent event : events) {
 
@@ -39,7 +39,7 @@ public class OutboxRetryService {
                     event.getId()
             );
 
-            outboxPublisherService.publish(event.getId());
+            outboxPublisherService.publish(event);
         }
     }
 }

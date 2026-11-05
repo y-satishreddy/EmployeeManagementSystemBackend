@@ -27,14 +27,12 @@ public class OutboxCreatedEventListener {
     )
     public void handleOutboxCreated(OutboxCreatedEvent event) {
 
-        OutboxEvent outboxEvent =
-                event.getOutboxEvent();
+        OutboxEvent outboxEvent = event.getOutboxEvent();
 
         logger.info(
                 "Outbox transaction committed. Event ID: {}",
                 outboxEvent.getId()
         );
 
-        outboxPublisherService.publish(outboxEvent.getId());
-    }
-}
+        outboxPublisherService.publish(outboxEvent);
+    }}
